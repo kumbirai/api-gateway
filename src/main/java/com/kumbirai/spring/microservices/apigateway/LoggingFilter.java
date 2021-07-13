@@ -13,6 +13,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.util.Calendar;
+
 /**
  * <p><b>Purpose:</b><br>
  * <br>
@@ -48,8 +50,18 @@ public class LoggingFilter implements GlobalFilter
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain)
     {
-        LOGGER.info("Path of the request received -> {}", exchange.getRequest()
-                .getPath());
-        return chain.filter(exchange);
+        var request = exchange.getRequest();
+        LOGGER.info("{} R:{} {} {}", request.getRemoteAddress(), request.getId(), request.getMethodValue(), request.getPath());
+
+        var startTimestamp = Calendar.getInstance()
+                .getTimeInMillis();
+
+        return chain.filter(exchange)
+                .then(Mono.fromRunnable(() ->
+                {
+                    var response = exchange.getResponse();
+                    LOGGER.info("R:{}, {} {}(ms)", request.getId(), response.getStatusCode(), Calendar.getInstance()
+                            .getTimeInMillis() - startTimestamp);
+                }));
     }
 }
